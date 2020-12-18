@@ -1,0 +1,29 @@
+<launch>
+  <arg name="model" default="$(find my_leo_rover)/urdf/myleo_laser.urdf.xacro"/>
+  <arg name="world" default="leo_house" />
+  
+
+  <include file="$(find my_leo_rover)/launch/gazebo.launch">
+    <arg name="model" value="$(arg model)" />
+    <arg name="world" value="$(arg world)" />
+  </include>
+ 
+  
+
+  <rosparam command="load"
+            file="$(find my_leo_rover)/config/joints.yaml"
+            ns="leo_rover_joint_state_controller" />
+  <rosparam command="load"
+            file="$(find my_leo_rover)/config/diffdrive.yaml"
+            ns="leo_rover_diff_drive_controller" />
+  
+  <node name="leo_rover_controller_spawner" pkg="controller_manager" type="spawner"
+    args="leo_rover_joint_state_controller
+          leo_rover_diff_drive_controller
+          --shutdown-timeout 3"/>
+  
+
+  <node name="rqt_robot_steering" pkg="rqt_robot_steering" type="rqt_robot_steering">
+    <param name="default_topic" value="/leo_rover_diff_drive_controller/cmd_vel"/>
+  </node>
+</launch>

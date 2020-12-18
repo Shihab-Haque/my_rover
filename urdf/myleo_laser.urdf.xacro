@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro"
+       name="leo_description">
+  <xacro:macro name="default_inertial" params="mass">
+    <inertial>
+      <mass value="${mass}" />
+      <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0" />
+    </inertial>
+  </xacro:macro>
+  
+  <xacro:macro name="cylinder_inertial" params="mass r l rpy">
+    <inertial>
+      <mass value="${mass}" />
+      <origin xyz="0 0 0" rpy="${rpy}"/>
+      <inertia ixx="${mass*(3*r*r+l*l)/12}" ixy = "0" ixz = "0"
+            iyy="${mass*(3*r*r+l*l)/12}" iyz = "0"
+            izz="${mass*(r*r)/2}" />
+    </inertial>
+  </xacro:macro> 
+  
+  <material name="white">
+    <color rgba="1 1 1 1"/>
+  </material>
+  
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="package://my_leo_rover/meshes/base.dae"/>
+      </geometry>
+    </visual>
+    <collision>
+      <geometry>
+        <mesh filename="package://my_leo_rover/meshes/base.dae"/>
+      </geometry>
+    </collision>
+    <xacro:default_inertial mass="10"/>
+  </link>
+
+  <xacro:macro name="wheel_link" params="name model"> 
+    <link name="wheel_${name}_link">
+      <visual>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+        <geometry>
+          <mesh filename="package://my_leo_rover/meshes/wheel_${model}.dae"/>
+        </geometry>
+      </visual>
+      <collision>
+        <geometry>
+          <cylinder radius="0.0625" length="0.07"/>
+        </geometry>
+        <origin xyz="0 0 0" rpy="1.57075 0 0"/>
+      </collision>
+      <xacro:cylinder_inertial mass="2" r="0.0625" l="0.07" rpy="1.57075 0 0"/>
+    </link>
+    <transmission name="${name}_wheel_trans">
+      <type>transmission_interface/SimpleTransmission</type>
+      <actuator name="${name}_wheel_motor">
+        <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+      <joint name="wheel_${name}_joint">
+        <hardwareInterface>VelocityJointInterface</hardwareInterface>
+      </joint>
+    </transmission>
+    <gazebo reference="${name}_wheel">
+      <mu1 value="200.0"/>
+      <mu2 value="100.0"/>
+      <kp value="10000000.0" />
+      <kd value="1.0" />
+      <material>Gazebo/Grey</material>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:wheel_link name="FL" model="left"/>
+  <xacro:wheel_link name="FR" model="right"/>
+  <xacro:wheel_link name="RL" model="left"/>
+  <xacro:wheel_link name="RR" model="right"/>
+  
+  <joint name="wheel_FL_joint" type="continuous">
+    <origin xyz="0.1472 0.1114 -0.1353" rpy="0 0 ${pi}"/>
+    <parent link="base_link"/>
+    <child link="wheel_FL_link"/>
+    <axis xyz="0 -1 0"/>
+  </joint>
+
+  <joint name="wheel_FR_joint" type="continuous">
+    <origin xyz="0.1472 -0.1114 -0.1353" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="wheel_FR_link"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <joint name="wheel_RL_joint" type="continuous">
+    <origin xyz="-0.1419 0.1114 -0.1353" rpy="0 0 ${pi}"/>
+    <parent link="base_link"/>
+    <child link="wheel_RL_link"/>
+    <axis xyz="0 -1 0"/>
+  </joint>
+
+  <joint name="wheel_RR_joint" type="continuous">
+    <origin xyz="-0.1419 -0.1114 -0.1353" rpy="0 0 0"/>
+    <parent link="base_link"/>
+    <child link="wheel_RR_link"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <link name="camera_frame"/>
+ 
+  
+  <link name="sensor_laser">
+    <visual>
+      <geometry>
+        <cylinder radius="0.0175" length="0.020"/>
+      </geometry>
+      <origin xyz="0 0 -.020" rpy="0 0 0"/>
+      <material name="white"/>
+    </visual>
+    <collision>
+      <geometry>
+        <cylinder radius="0.0175" length="0.020"/>
+      </geometry>
+      <origin xyz="0 0 -.020" rpy="0 0 0"/>
+      <material name="white"/>
+    </collision>
+    <xacro:cylinder_inertial mass="1" r="0.0175" l="0.020" rpy="0 0 0"/>
+  </link>
+  
+  <gazebo reference="sensor_laser">
+    <sensor type="ray" name="head_hokuyo_sensor">
+            <pose>0 0 0 0 0 0</pose>
+            <visualize>false</visualize>
+            <updateRate>20</updateRate>
+            <ray>
+                <scan>
+                    <horizontal>
+                        <samples>720</samples>
+                        <resolution>1</resolution>
+                        <min_angle>-1.570796</min_angle>
+                        <max_angle>1.570796</max_angle>
+                    </horizontal>
+                </scan>
+                <range>
+                    <min>0.10</min>
+                    <max>10.0</max>
+                    <resolution>0.01</resolution>
+                </range>
+                <noise>
+                    <type>gaussian</type>
+                    <mean>0.0</mean>
+                    <stddev>0.01</stddev>
+                </noise>
+            </ray>
+            <plugin name="gazebo_ros_head_hokuyo_controller" filename="libgazebo_ros_laser.so">
+                <topicName>/leo_rover/laser/scan</topicName>
+                <frameName>sensor_laser</frameName>
+            </plugin>
+    </sensor>
+  </gazebo>
+  
+  <joint name="sensor_laser_joint" type="fixed">
+      <origin xyz="0.1 0 0.025" rpy="0 0 0"/>
+      <parent link="base_link"/>
+      <child link="sensor_laser"/>
+  </joint>
+    
+      
+
+  <joint name="camera_joint" type="fixed">
+      <origin xyz="0.0971 0 -0.0427" rpy="${-pi/2 - 0.2094} 0 ${-pi/2}"/>
+      <parent link="base_link"/>
+      <child link="camera_frame"/>
+  </joint>
+
+  <gazebo>
+    <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+      <robotNamespace>/</robotNamespace>
+    </plugin>
+  </gazebo>
+
+</robot>
